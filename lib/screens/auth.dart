@@ -1,6 +1,7 @@
 import 'dart:io';
 
 import 'package:chat_app/widgets/user_image.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:firebase_storage/firebase_storage.dart';
 import 'package:flutter/material.dart';
@@ -18,6 +19,7 @@ class _AuthScreenState extends State<AuthScreen> {
   final GlobalKey<FormState> _formKey = GlobalKey<FormState>();
 
   var _isLogin = true;
+  var _enteredUserName = '';
   var _enteredEmail = '';
   var _enteredPassword = '';
   var _enteredPasswordConfirmation = '';
@@ -37,8 +39,6 @@ class _AuthScreenState extends State<AuthScreen> {
       setState(() {
         _isUploading = true;
       });
-
-      FocusScope.of(context).requestFocus(FocusNode());
 
       if (_isLogin) {
         final UserCredential userCredential =
@@ -77,8 +77,16 @@ class _AuthScreenState extends State<AuthScreen> {
             .child('${userCredential.user!.uid}.jpg');
 
         await storageRef.putFile(_selectedImage!);
-        final String imageURL = await storageRef.getDownloadURL();
-        // log(imageURL);
+        final imageURL = await storageRef.getDownloadURL();
+
+        await FirebaseFirestore.instance
+            .collection('users')
+            .doc(userCredential.user!.uid)
+            .set({
+          'username': _enteredUserName,
+          'email': _enteredEmail,
+          'image_url': imageURL,
+        });
       }
     } on FirebaseAuthException catch (e) {
       // ignore: use_build_context_synchronously
@@ -126,6 +134,22 @@ class _AuthScreenState extends State<AuthScreen> {
                             UserImagePicker(
                               onPickImage: (File pickedImage) {
                                 _selectedImage = pickedImage;
+                              },
+                            ),
+                          if (!_isLogin)
+                            TextFormField(
+                              decoration: const InputDecoration(
+                                labelText: "User Name",
+                              ),
+                              keyboardType: TextInputType.emailAddress,
+                              autocorrect: false,
+                              textCapitalization: TextCapitalization.none,
+                              onSaved: (value) => _enteredUserName = value!,
+                              validator: (value) {
+                                if (value == null || value.trim().isEmpty) {
+                                  return 'Enter Your User Name';
+                                }
+                                return null;
                               },
                             ),
                           TextFormField(
