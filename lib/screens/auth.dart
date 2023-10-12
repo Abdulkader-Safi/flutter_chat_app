@@ -1,5 +1,8 @@
+import 'dart:io';
+
 import 'package:chat_app/widgets/user_image.dart';
 import 'package:firebase_auth/firebase_auth.dart';
+import 'package:firebase_storage/firebase_storage.dart';
 import 'package:flutter/material.dart';
 
 final _firebase = FirebaseAuth.instance;
@@ -18,16 +21,25 @@ class _AuthScreenState extends State<AuthScreen> {
   var _enteredEmail = '';
   var _enteredPassword = '';
   var _enteredPasswordConfirmation = '';
+  File? _selectedImage;
+  var _isUploading = false;
 
   void _submit() async {
     final valid = _formKey.currentState!.validate();
 
-    if (!valid) {
+    if (!valid || (!_isLogin && _selectedImage == null)) {
       return;
     }
+
     _formKey.currentState!.save();
 
     try {
+      setState(() {
+        _isUploading = true;
+      });
+
+      FocusScope.of(context).requestFocus(FocusNode());
+
       if (_isLogin) {
         final UserCredential userCredential =
             await _firebase.signInWithEmailAndPassword(
@@ -42,16 +54,31 @@ class _AuthScreenState extends State<AuthScreen> {
           ScaffoldMessenger.of(context).showSnackBar(
             const SnackBar(
               content:
-                  Text("Passeword and Password Confermation does not match"),
+                  Text("Password and Password Confirmation does not match"),
             ),
           );
+
+          setState(() {
+            _isUploading = false;
+          });
+
           return;
         }
+
         final UserCredential userCredential =
             await _firebase.createUserWithEmailAndPassword(
           email: _enteredEmail,
           password: _enteredPassword,
         );
+
+        final Reference storageRef = FirebaseStorage.instance
+            .ref()
+            .child('user_images')
+            .child('${userCredential.user!.uid}.jpg');
+
+        await storageRef.putFile(_selectedImage!);
+        final String imageURL = await storageRef.getDownloadURL();
+        // log(imageURL);
       }
     } on FirebaseAuthException catch (e) {
       // ignore: use_build_context_synchronously
@@ -64,6 +91,9 @@ class _AuthScreenState extends State<AuthScreen> {
           ),
         ),
       );
+      setState(() {
+        _isUploading = false;
+      });
     }
   }
 
@@ -92,7 +122,12 @@ class _AuthScreenState extends State<AuthScreen> {
                       key: _formKey,
                       child: Column(
                         children: [
-                          if (!_isLogin) const UserImagePicker(),
+                          if (!_isLogin)
+                            UserImagePicker(
+                              onPickImage: (File pickedImage) {
+                                _selectedImage = pickedImage;
+                              },
+                            ),
                           TextFormField(
                             decoration: const InputDecoration(
                               labelText: "Email Address",
@@ -149,27 +184,30 @@ class _AuthScreenState extends State<AuthScreen> {
                           const SizedBox(
                             height: 12,
                           ),
-                          ElevatedButton(
-                            onPressed: () => _submit(),
-                            style: ElevatedButton.styleFrom(
-                              backgroundColor: Theme.of(context)
-                                  .colorScheme
-                                  .primaryContainer,
+                          if (_isUploading) const CircularProgressIndicator(),
+                          if (!_isUploading)
+                            ElevatedButton(
+                              onPressed: () => _submit(),
+                              style: ElevatedButton.styleFrom(
+                                backgroundColor: Theme.of(context)
+                                    .colorScheme
+                                    .primaryContainer,
+                              ),
+                              child: Text(_isLogin ? "Login" : "Signup"),
                             ),
-                            child: Text(_isLogin ? "Login" : "Signup"),
-                          ),
-                          ElevatedButton(
-                            onPressed: () {
-                              setState(() {
-                                _isLogin = !_isLogin;
-                              });
-                            },
-                            child: Text(
-                              _isLogin
-                                  ? "Create an account"
-                                  : "I already have an account",
+                          if (!_isUploading)
+                            ElevatedButton(
+                              onPressed: () {
+                                setState(() {
+                                  _isLogin = !_isLogin;
+                                });
+                              },
+                              child: Text(
+                                _isLogin
+                                    ? "Create an account"
+                                    : "I already have an account",
+                              ),
                             ),
-                          ),
                         ],
                       ),
                     ),
