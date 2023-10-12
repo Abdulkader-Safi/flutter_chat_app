@@ -1,3 +1,4 @@
+import 'package:chat_app/widgets/user_image.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 
@@ -13,9 +14,10 @@ class AuthScreen extends StatefulWidget {
 class _AuthScreenState extends State<AuthScreen> {
   final GlobalKey<FormState> _formKey = GlobalKey<FormState>();
 
-  var _isLogin = false;
+  var _isLogin = true;
   var _enteredEmail = '';
   var _enteredPassword = '';
+  var _enteredPasswordConfirmation = '';
 
   void _submit() async {
     final valid = _formKey.currentState!.validate();
@@ -33,6 +35,18 @@ class _AuthScreenState extends State<AuthScreen> {
           password: _enteredPassword,
         );
       } else {
+        if (_enteredPassword != _enteredPasswordConfirmation) {
+          // ignore: use_build_context_synchronously
+          ScaffoldMessenger.of(context).clearSnackBars();
+          // ignore: use_build_context_synchronously
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content:
+                  Text("Passeword and Password Confermation does not match"),
+            ),
+          );
+          return;
+        }
         final UserCredential userCredential =
             await _firebase.createUserWithEmailAndPassword(
           email: _enteredEmail,
@@ -78,6 +92,7 @@ class _AuthScreenState extends State<AuthScreen> {
                       key: _formKey,
                       child: Column(
                         children: [
+                          if (!_isLogin) const UserImagePicker(),
                           TextFormField(
                             decoration: const InputDecoration(
                               labelText: "Email Address",
@@ -112,6 +127,25 @@ class _AuthScreenState extends State<AuthScreen> {
                               return null;
                             },
                           ),
+                          if (!_isLogin)
+                            TextFormField(
+                              decoration: const InputDecoration(
+                                labelText: "Password Confirmation",
+                              ),
+                              obscureText: true,
+                              autocorrect: false,
+                              textCapitalization: TextCapitalization.none,
+                              onSaved: (value) =>
+                                  _enteredPasswordConfirmation = value!,
+                              validator: (value) {
+                                if (value == null ||
+                                    value.trim().length < 6 ||
+                                    !value.contains('@')) {
+                                  return 'Password must be at least 6 characters long.';
+                                }
+                                return null;
+                              },
+                            ),
                           const SizedBox(
                             height: 12,
                           ),
