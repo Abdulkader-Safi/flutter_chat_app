@@ -202,9 +202,7 @@ class _AuthScreenState extends State<AuthScreen> {
                               onSaved: (value) =>
                                   _enteredPasswordConfirmation = value!,
                               validator: (value) {
-                                if (value == null ||
-                                    value.trim().length < 6 ||
-                                    !value.contains('@')) {
+                                if (value == null || value.trim().length < 6) {
                                   return 'Password must be at least 6 characters long.';
                                 }
                                 return null;
