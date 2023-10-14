@@ -41,6 +41,8 @@ class _AuthScreenState extends State<AuthScreen> {
       });
 
       if (_isLogin) {
+        FocusScope.of(context).unfocus();
+
         final UserCredential userCredential =
             await _firebase.signInWithEmailAndPassword(
           email: _enteredEmail,
@@ -48,6 +50,8 @@ class _AuthScreenState extends State<AuthScreen> {
         );
       } else {
         if (_enteredPassword != _enteredPasswordConfirmation) {
+          FocusScope.of(context).unfocus();
+
           // ignore: use_build_context_synchronously
           ScaffoldMessenger.of(context).clearSnackBars();
           // ignore: use_build_context_synchronously
@@ -61,9 +65,10 @@ class _AuthScreenState extends State<AuthScreen> {
           setState(() {
             _isUploading = false;
           });
-
           return;
         }
+
+        FocusScope.of(context).unfocus();
 
         final UserCredential userCredential =
             await _firebase.createUserWithEmailAndPassword(
@@ -85,7 +90,7 @@ class _AuthScreenState extends State<AuthScreen> {
             .set({
           'username': _enteredUserName,
           'email': _enteredEmail,
-          'image_url': imageURL,
+          'imageURL': imageURL,
         });
       }
     } on FirebaseAuthException catch (e) {
